@@ -1,6 +1,6 @@
 ﻿namespace BPM.BLL
 {
-    public class Class1
+    public class BLLModule
     {
 
     }
