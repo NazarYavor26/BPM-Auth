@@ -10,6 +10,5 @@ namespace BPM.DAL.Enums
     {
         Admin = 1,
         Employee
-
     }
 }

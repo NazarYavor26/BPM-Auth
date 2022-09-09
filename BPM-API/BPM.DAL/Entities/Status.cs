@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace BPM.DAL.Entites
+namespace BPM.DAL.Entities
 {
     internal class Status
     {

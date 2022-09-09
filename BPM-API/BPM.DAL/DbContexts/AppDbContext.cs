@@ -1,4 +1,4 @@
-﻿using BPM.DAL.Entites;
+﻿using BPM.DAL.Entities;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;

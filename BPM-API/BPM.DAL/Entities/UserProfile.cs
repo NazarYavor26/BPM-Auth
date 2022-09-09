@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace BPM.DAL.Entites
+namespace BPM.DAL.Entities
 {
     internal class UserProfile
     {
@@ -28,12 +28,15 @@ namespace BPM.DAL.Entites
         public DateTime LastUpdated { get; set; }
 
         [Required]
-        public int LastUpdatedBy { get; set; }
 
-        public int CompetenceLeadId { get; set; }
+        public int? CompetenceLeadId { get; set; }
 
         public User User { get; set; }
 
+        public virtual Level Level { get; set; }
 
+        //public virtual User LastUpdatedBy { get; set; }
+
+        //public virtual User CompetenceLeadId { get; set; }
     }
 }
