@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace BPM.DAL.Enums
 {
-    internal enum Level
+    public enum Level
     {
         Trainee = 1,
         Junior,

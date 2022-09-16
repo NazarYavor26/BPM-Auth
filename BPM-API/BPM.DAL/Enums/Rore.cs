@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace BPM.DAL.Enums
 {
-    internal enum Rore
+    public enum Rore
     {
         Admin = 1,
         Employee

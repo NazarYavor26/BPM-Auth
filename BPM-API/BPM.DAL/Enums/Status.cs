@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace BPM.DAL.Enums
 {
-    internal enum Status
+    public enum Status
     {
         Pending = 1,
         Active,

@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace BPM.DAL.Entities
 {
-    internal class Level
+    public class Level
     {
         public Enums.Level Id { get; set; }
 

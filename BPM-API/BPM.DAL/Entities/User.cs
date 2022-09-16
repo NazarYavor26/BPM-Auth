@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace BPM.DAL.Entities
 {
-    internal class User
+    public class User
     {
         public int Id { get; set; }
 

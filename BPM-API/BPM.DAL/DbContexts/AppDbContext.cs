@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace BPM.DAL.DbContexts
 {
-    internal class AppDbContext : DbContext
+    public class AppDbContext : DbContext
     {
         public DbSet<Role> Roles { get; set; }
         public DbSet<Status> Statuses { get; set; }

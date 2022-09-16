@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace BPM.DAL.Entities
 {
-    internal class Role
+    public class Role
     {
         public Enums.Rore Id { get; set; }
 

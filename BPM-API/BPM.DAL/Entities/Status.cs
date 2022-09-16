@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace BPM.DAL.Entities
 {
-    internal class Status
+    public class Status
     {
         public Enums.Status Id { get; set; }
 
