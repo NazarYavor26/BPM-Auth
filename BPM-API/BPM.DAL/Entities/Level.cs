@@ -14,5 +14,7 @@ namespace BPM.DAL.Entities
         [Required]
         [MaxLength(50)]
         public string Name { get; set; }
+
+        public virtual ICollection<UserProfile> UserProfiles { get; set; }
     }
 }

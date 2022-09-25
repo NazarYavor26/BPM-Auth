@@ -21,6 +21,6 @@ namespace BPM.BLL.Models
 
         public Status StatusId { get; set; }
 
-        public int LevelId { get; set; }
+        public Level LevelId { get; set; }
     }
 }

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -25,14 +26,14 @@ namespace BPM.DAL.Entities
         public User User { get; set; }
 
         [Required]
-        public int LevelId { get; set; }
+        public Enums.Level LevelId { get; set; }
 
         public virtual Level Level { get; set; }
 
-        [Required]
+        public int? LastUpdatedById { get; set; }
         public virtual User LastUpdatedBy { get; set; }
 
-        [Required]
-        public virtual User CompetenceLeadId { get; set; }
+        public int? CompetenceLeadId { get; set; }
+        public virtual User CompetenceLead { get; set; }
     }
 }
