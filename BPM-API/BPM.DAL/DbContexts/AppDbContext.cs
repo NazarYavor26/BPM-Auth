@@ -18,25 +18,5 @@ namespace BPM.DAL.DbContexts
 
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
         {}
-
-        protected override void OnModelCreating(ModelBuilder modelBuilder)
-        {
-            modelBuilder.Entity<User>()
-                .HasOne(a => a.Profile)
-                .WithOne(b => b.User)
-                .HasForeignKey<UserProfile>(b => b.UserId);
-
-
-
-            /*modelBuilder.Entity<UserProfile>()
-                .HasOne(a => a.User)
-                .WithOne(a => a.Profile)
-                .HasForeignKey<User>(b => b.UserProfileId);*/
-
-            /*modelBuilder.Entity<UserProfile>()
-                .HasOne(a => a.Level)
-                .WithMany(b => b.UserProfiles);*/
-            /*.HasForeignKey(c => c.LevelId);*/
-        }
     }
 }

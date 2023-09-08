@@ -18,4 +18,8 @@
     <ProjectReference Include="..\BPM.BLL\BPM.BLL.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Middlewares\" />
+  </ItemGroup>
+
 </Project>
