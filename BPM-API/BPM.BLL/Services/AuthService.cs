@@ -1,4 +1,7 @@
 ﻿using BPM.BLL.Models;
+using BPM.BLL.Models.User;
+using BPM.DAL.Entities;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
@@ -33,14 +36,38 @@ namespace BPM.BLL.Services
             return _userDataModel.Email;
         }
 
-        public string Login(UserLoginModel userLoginModel)
+        public string Login(UserLoginModel userLoginModel, HttpResponse response)
         {
             if (!IsValidCredentials(userLoginModel))
             {
-                throw new InvalidCredentialException();
+                throw new InvalidCredentialException(
+                    "The email or password entered is incorrect. Please try again with a different one.");
             }
 
             string token = CreateToken(_userDataModel);
+            var refreshToken = GenerateRefreshToken();
+            SetRefreshToken(refreshToken, response);
+
+            return token;
+        }
+
+        public string RefreshToken(HttpRequest request, HttpResponse response)
+        {
+            var refreshToken = request.Cookies["refreshToken"];
+
+            if (!_userDataModel.RefreshToken.Equals(refreshToken))
+            {
+                throw new InvalidCredentialException("Invalid Refresh Token.");
+            }
+            else if (_userDataModel.TokenExpires < DateTime.Now)
+            {
+                throw new InvalidCredentialException("Token expired.");
+            }
+
+            string token = CreateToken(_userDataModel);
+            var newRefreshToken = GenerateRefreshToken();
+            SetRefreshToken(newRefreshToken, response);
+
             return token;
         }
 
@@ -98,6 +125,33 @@ namespace BPM.BLL.Services
             var jwt = new JwtSecurityTokenHandler().WriteToken(token);
 
             return jwt;
+        }
+
+        private RefreshToken GenerateRefreshToken()
+        {
+            var refreshToken = new RefreshToken
+            {
+                Token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64)),
+                Expires = DateTime.Now.AddDays(7),
+                Created = DateTime.Now
+            };
+
+            return refreshToken;
+        }
+
+        private void SetRefreshToken(RefreshToken newRefreshToken, HttpResponse response)
+        {
+            var cookieOptions = new CookieOptions
+            {
+                HttpOnly = true,
+                Expires = newRefreshToken.Expires
+            };
+
+            response.Cookies.Append("refreshToken", newRefreshToken.Token, cookieOptions);
+
+            _userDataModel.RefreshToken = newRefreshToken.Token;
+            _userDataModel.TokenCreated = newRefreshToken.Created;
+            _userDataModel.TokenExpires = newRefreshToken.Expires;
         }
     }
 }

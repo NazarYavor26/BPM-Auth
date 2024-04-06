@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace BPM.BLL.Models;
+namespace BPM.BLL.Models.User;
 
 public class UserRegisterModel
 {

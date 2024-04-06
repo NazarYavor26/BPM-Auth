@@ -1,4 +1,4 @@
-﻿using BPM.BLL.Models;
+﻿using BPM.BLL.Models.User;
 
 namespace BPM.BLL.Services
 {

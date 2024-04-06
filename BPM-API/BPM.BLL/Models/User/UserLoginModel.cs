@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace BPM.BLL.Models
+namespace BPM.BLL.Models.User
 {
     public class UserLoginModel
     {

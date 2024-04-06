@@ -37,7 +37,7 @@ namespace BPM.API.Middlewares
                 case InvalidCredentialException ex:
                     errorDetails.StatusCode = (int)HttpStatusCode.Unauthorized;
                     response.StatusCode = (int)HttpStatusCode.Unauthorized;
-                    errorDetails.Message = "The email or password entered is incorrect. Please try again with a different one.";
+                    errorDetails.Message = exception.Message;
                     break;
 
                 default:

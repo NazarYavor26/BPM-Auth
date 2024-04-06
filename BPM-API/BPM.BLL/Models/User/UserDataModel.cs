@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace BPM.BLL.Models
+namespace BPM.BLL.Models.User
 {
     public class UserDataModel
     {
@@ -20,6 +20,12 @@ namespace BPM.BLL.Models
         public byte[] PasswordSalt { get; set; }
 
         public byte[] PasswordHash { get; set; }
+
+        public string RefreshToken { get; set; } = string.Empty;
+
+        public DateTime TokenCreated { get; set; }
+
+        public DateTime TokenExpires { get; set; }
 
         public Rore RoleId { get; set; }
 

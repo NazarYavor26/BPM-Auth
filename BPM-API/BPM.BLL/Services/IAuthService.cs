@@ -1,9 +1,5 @@
-﻿using BPM.BLL.Models;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using BPM.BLL.Models.User;
+using Microsoft.AspNetCore.Http;
 
 namespace BPM.BLL.Services
 {
@@ -11,6 +7,8 @@ namespace BPM.BLL.Services
     {
         string Register(UserRegisterModel userRegisterModel);
 
-        string Login(UserLoginModel userLoginModel);
+        string Login(UserLoginModel userLoginModel, HttpResponse response);
+
+        string RefreshToken(HttpRequest request, HttpResponse response);
     }
 }
