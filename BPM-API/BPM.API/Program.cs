@@ -1,3 +1,4 @@
+using BPM.API.Middlewares;
 using BPM.BLL;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -20,6 +21,8 @@ builder.Services.AddSwaggerGen();
 BLLModule.Load(builder.Services, builder.Configuration);
 
 var app = builder.Build();
+
+app.UseMiddleware<GlobalErrorHandlingMiddlewar>();
 
 if (app.Environment.IsDevelopment())
 {

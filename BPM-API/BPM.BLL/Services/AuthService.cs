@@ -2,6 +2,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
+using System.Security.Authentication;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
@@ -34,19 +35,28 @@ namespace BPM.BLL.Services
 
         public string Login(UserLoginModel userLoginModel)
         {
+            if (!IsValidCredentials(userLoginModel))
+            {
+                throw new InvalidCredentialException();
+            }
+
+            string token = CreateToken(_userDataModel);
+            return token;
+        }
+
+        private bool IsValidCredentials(UserLoginModel userLoginModel)
+        {
             if (userLoginModel.Email != _userDataModel.Email)
             {
-                return "Email or password is incorrect";
+                return false;
             }
 
             if (!VerifyPasswordHash(userLoginModel.Password, _userDataModel.PasswordSalt, _userDataModel.PasswordHash))
             {
-                return "Email or password is incorrect";
+                return false;
             }
 
-            string token = CreateToken(_userDataModel);
-
-            return token;
+            return true;
         }
 
         private void CreatePasswordHash(string password, out byte[] passwordSalt, out byte[] passwordHash)
