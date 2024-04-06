@@ -1,9 +1,4 @@
-﻿using BPM.BLL.Models;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using BPM.BLL.Models.User;
 
 namespace BPM.BLL.Services
 {

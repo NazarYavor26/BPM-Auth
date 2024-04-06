@@ -9,9 +9,8 @@ namespace BPM.DAL
     {
         public static void Load(IServiceCollection services, IConfiguration configuration)
         {
-            services.AddDbContext<AppDbContext>(option =>
-            option.UseSqlServer(configuration.GetConnectionString("DBConnection"))
-            );
+            // DAL Services
+            services.AddDbContext<AppDbContext>(option => option.UseSqlServer(configuration.GetConnectionString("DBConnection")));
         }
     }
 }
