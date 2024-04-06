@@ -1,15 +1,15 @@
-using BPM.API.Middlewares;
 using BPM.BLL;
+using BPM.BLL.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-const string BPM_POLICY = "BPMPolicy";
+const string BPMPolicy = "BPMPolicy";
 
 builder.Services.AddControllers();
 
-builder.Services.AddCors(options => options.AddPolicy(BPM_POLICY, policyBuilder =>
+builder.Services.AddCors(options => options.AddPolicy(BPMPolicy, builder =>
 {
-    policyBuilder.AllowAnyOrigin()
+    builder.AllowAnyOrigin()
     .AllowAnyMethod()
     .AllowAnyHeader()
     .WithExposedHeaders("Token-Expired");
@@ -22,7 +22,6 @@ BLLModule.Load(builder.Services, builder.Configuration);
 
 var app = builder.Build();
 
-app.UseMiddleware<GlobalErrorHandlingMiddlewar>();
 
 if (app.Environment.IsDevelopment())
 {

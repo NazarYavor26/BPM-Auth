@@ -1,4 +1,4 @@
-﻿using BPM.BLL.Models.User;
+﻿using BPM.BLL.Models;
 using BPM.BLL.Services;
 using Microsoft.AspNetCore.Mvc;
 
