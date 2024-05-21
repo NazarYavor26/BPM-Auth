@@ -9,7 +9,7 @@ namespace BPM_Auth.DAL
     {
         public static void Load(IServiceCollection services, IConfiguration configuration)
         {
-            services.AddDbContext<AppDbContext>(option => option.UseSqlServer(configuration.GetConnectionString("DBConnection")));
+            services.AddDbContext<AuthDbContext>(option => option.UseSqlServer(configuration.GetConnectionString("DBConnection")));
         }
     }
 }
