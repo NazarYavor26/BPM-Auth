@@ -1,5 +1,9 @@
 ﻿using BPM_Auth.BLL.Models;
 using BPM_Auth.BLL.Models.User;
+using BPM_Auth.DAL.DbContexts;
+using BPM_Auth.DAL.Entities;
+using BPM_Auth.DAL.Enums;
+using BPM_Auth.DAL.Repositories;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
@@ -15,24 +19,111 @@ namespace BPM_Auth.BLL.Services
     {
         private UserDataModel _userDataModel;
         private readonly IConfiguration _configuration;
+        private readonly IUserRepository _userRepository;
+        private readonly ITeamMembershipRepository _teamMembershipRepository;
+        private readonly ITeamRepository _teamRepository;
+        private readonly AppDbContext _db;
 
-        public AuthService(IConfiguration configuration)
+        public AuthService(
+            IConfiguration configuration,
+            IUserRepository userRepository,
+            ITeamMembershipRepository teamMembershipRepository, 
+            ITeamRepository teamRepository,
+            AppDbContext db)
         {
             _userDataModel = new UserDataModel();
             _configuration = configuration;
+            _userRepository = userRepository;
+            _teamMembershipRepository = teamMembershipRepository;
+            _teamRepository = teamRepository;
+            _db = db;
         }
 
-        public string Register(UserRegisterModel userRegisterModel)
+        public string RegisterAdmin(AdminRegisterModel adminRegisterModel)
+        {
+            CreatePasswordHash(adminRegisterModel.Password, out byte[] passwordSalt, out byte[] passwordHash);
+
+            var user = new User
+            {
+                UserId = Guid.NewGuid(),
+                FirstName = adminRegisterModel.FirstName,
+                LastName = adminRegisterModel.LastName,
+                Position = adminRegisterModel.Position,
+                Email = adminRegisterModel.Email,
+                Role = Role.Admin,
+                PasswordSalt = passwordSalt,
+                PasswordHash = passwordHash
+            };
+
+            _userRepository.Add(user);
+
+            return user.UserId.ToString();
+        }
+
+        public string RegisterMember(UserRegisterModel userRegisterModel)
         {
             CreatePasswordHash(userRegisterModel.Password, out byte[] passwordSalt, out byte[] passwordHash);
 
-            _userDataModel.FirstName = userRegisterModel.FirstName;
-            _userDataModel.LastName = userRegisterModel.LastName;
-            _userDataModel.Email = userRegisterModel.Email;
-            _userDataModel.PasswordSalt = passwordSalt;
-            _userDataModel.PasswordHash = passwordHash;
+            var user = new User
+            {
+                UserId = Guid.NewGuid(),
+                FirstName = userRegisterModel.FirstName,
+                LastName = userRegisterModel.LastName,
+                Position = userRegisterModel.Position,
+                Email = userRegisterModel.Email,
+                Role = userRegisterModel.Role,
+                PasswordSalt = passwordSalt,
+                PasswordHash = passwordHash
+            };
 
-            return _userDataModel.Email;
+            var team = _teamRepository.GetById(userRegisterModel.TeamId)
+                ?? throw new Exception($"Team with Id {userRegisterModel.TeamId} not found");
+
+            var supervisor = _userRepository.GetById(userRegisterModel.SupervisorId)
+                ?? throw new Exception($"Supervisor with Id {userRegisterModel.SupervisorId} not found");
+
+            var teamMembership = ConnectUserWithTeam(user, team);
+            teamMembership.SupervisorId = supervisor.UserId;
+            teamMembership.Supervisor = supervisor;
+
+            user.TeamMemberships.Add(teamMembership);
+            team.TeamMemberships.Add(teamMembership);
+            _teamMembershipRepository.Add(teamMembership);
+
+            return user.UserId.ToString();
+        }
+
+        public string RegisterTeam(TeamRegisterModel teamRegisterModel)
+        {
+            var team = new Team 
+            { 
+                TeamId = Guid.NewGuid(),
+                TeamName = teamRegisterModel.TeamName
+            };
+
+            var user = _userRepository.GetById(teamRegisterModel.AdminId) 
+                ?? throw new Exception($"User with Id {teamRegisterModel.AdminId} not found");
+
+            var teamMembership = ConnectUserWithTeam(user, team);
+            user.TeamMemberships.Add(teamMembership);
+            team.TeamMemberships.Add(teamMembership);
+            _teamMembershipRepository.Add(teamMembership);
+
+            return team.TeamId.ToString();
+        }
+
+        private TeamMembership ConnectUserWithTeam(User user, Team team, User? Supervisor = null)
+        {
+            return new TeamMembership
+            {
+                TeamMembershipId = Guid.NewGuid(),
+                UserId = user.UserId,
+                User = user,
+                TeamId = team.TeamId,
+                Team = team,
+                SupervisorId = Supervisor?.UserId,
+                Supervisor = Supervisor
+            };
         }
 
         public string Login(UserLoginModel userLoginModel, HttpResponse response)

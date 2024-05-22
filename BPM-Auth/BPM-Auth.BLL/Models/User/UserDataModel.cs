@@ -1,6 +1,4 @@
-﻿using BPM_Auth.DAL.Enums;
-
-namespace BPM_Auth.BLL.Models.User
+﻿namespace BPM_Auth.BLL.Models.User
 {
     public class UserDataModel
     {
@@ -21,11 +19,5 @@ namespace BPM_Auth.BLL.Models.User
         public DateTime TokenCreated { get; set; }
 
         public DateTime TokenExpires { get; set; }
-
-        public Rore RoleId { get; set; }
-
-        public Status StatusId { get; set; }
-
-        public Level LevelId { get; set; }
     }
 }

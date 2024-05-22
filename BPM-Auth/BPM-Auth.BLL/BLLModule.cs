@@ -9,7 +9,7 @@ namespace BPM_Auth.BLL
     {
         public static void Load(IServiceCollection services, IConfiguration configuration)
         {
-            services.AddSingleton<IAuthService, AuthService>();
+            services.AddTransient<IAuthService, AuthService>();
             DALModule.Load(services, configuration);
         }
     }
