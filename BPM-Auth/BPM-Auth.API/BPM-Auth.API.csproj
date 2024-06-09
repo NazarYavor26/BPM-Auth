@@ -4,9 +4,11 @@
     <TargetFramework>net6.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+	  <RootNamespace>BPM_Auth.API</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="6.0.30" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="6.0.8">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -16,6 +18,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\BPM-Auth.BLL\BPM-Auth.BLL.csproj" />
+    <ProjectReference Include="..\BPM-Auth.DAL\BPM-Auth.DAL.csproj" />
+    <ProjectReference Include="..\BPM-Auth.ServiceBus\BPM-Auth.ServiceBus.csproj" />
   </ItemGroup>
 
 </Project>

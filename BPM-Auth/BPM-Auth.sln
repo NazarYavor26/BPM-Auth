@@ -11,6 +11,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BPM-Auth.BLL", "BPM-Auth.BL
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BPM-Auth.DAL", "BPM-Auth.DAL\BPM-Auth.DAL.csproj", "{E11CAAAC-8C21-4559-A88F-44C37CE3F48F}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BPM-Auth.ServiceBus", "BPM-Auth.ServiceBus\BPM-Auth.ServiceBus.csproj", "{9F21969E-7443-469C-803F-F0492E941FDE}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -29,6 +31,10 @@ Global
 		{E11CAAAC-8C21-4559-A88F-44C37CE3F48F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E11CAAAC-8C21-4559-A88F-44C37CE3F48F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E11CAAAC-8C21-4559-A88F-44C37CE3F48F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9F21969E-7443-469C-803F-F0492E941FDE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9F21969E-7443-469C-803F-F0492E941FDE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9F21969E-7443-469C-803F-F0492E941FDE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9F21969E-7443-469C-803F-F0492E941FDE}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

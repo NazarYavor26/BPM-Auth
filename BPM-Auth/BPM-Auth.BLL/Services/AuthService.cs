@@ -1,5 +1,11 @@
 ﻿using BPM_Auth.BLL.Models;
 using BPM_Auth.BLL.Models.User;
+using BPM_Auth.DAL.DbContexts;
+using BPM_Auth.DAL.Entities;
+using BPM_Auth.DAL.Enums;
+using BPM_Auth.DAL.Repositories;
+using BPM_Auth.ServiceBus.Models;
+using BPM_Auth.ServiceBus.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
@@ -13,76 +19,82 @@ namespace BPM_Auth.BLL.Services
 {
     public class AuthService : IAuthService
     {
-        private UserDataModel _userDataModel;
         private readonly IConfiguration _configuration;
+        private readonly IUserRepository _userRepository;
+        private readonly IPublisherService _publisherService;
+        private readonly AppDbContext _db;
 
-        public AuthService(IConfiguration configuration)
+        public AuthService(
+            IConfiguration configuration,
+            IUserRepository userRepository,
+            IPublisherService publisherService,
+            AppDbContext db)
         {
-            _userDataModel = new UserDataModel();
             _configuration = configuration;
+            _userRepository = userRepository;
+            _publisherService = publisherService;
+            _db = db;
         }
 
-        public string Register(UserRegisterModel userRegisterModel)
+        public string RegisterAdmin(AdminRegisterModel adminRegisterModel)
         {
-            CreatePasswordHash(userRegisterModel.Password, out byte[] passwordSalt, out byte[] passwordHash);
+            CreatePasswordHash(adminRegisterModel.Password, out byte[] passwordSalt, out byte[] passwordHash);
 
-            _userDataModel.FirstName = userRegisterModel.FirstName;
-            _userDataModel.LastName = userRegisterModel.LastName;
-            _userDataModel.Email = userRegisterModel.Email;
-            _userDataModel.PasswordSalt = passwordSalt;
-            _userDataModel.PasswordHash = passwordHash;
+            var user = new User
+            {
+                UserId = Guid.NewGuid(),
+                Email = adminRegisterModel.Email,
+                Role = Role.Admin,
+                PasswordSalt = passwordSalt,
+                PasswordHash = passwordHash
+            };
 
-            return _userDataModel.Email;
+            _userRepository.Add(user);
+
+            _publisherService.PublishAdminUserToBpmCore(new BpmCoreUserModel
+            {
+                UserId = user.UserId,
+                FirstName = adminRegisterModel.FirstName,
+                LastName = adminRegisterModel.LastName,
+                Position = adminRegisterModel.Position,
+                Email = user.Email,
+                Role = user.Role
+            });
+
+            return user.UserId.ToString();
         }
 
-        public string Login(UserLoginModel userLoginModel, HttpResponse response)
+        public string RegisterMember(MemberRegisterModel memberRegisterModel)
         {
-            if (!IsValidCredentials(userLoginModel))
+            var supervisor = _userRepository.GetById(memberRegisterModel.SupervisorId)
+                ?? throw new Exception($"Supervisor with Id {memberRegisterModel.SupervisorId} not found");
+
+            CreatePasswordHash(memberRegisterModel.Password, out byte[] passwordSalt, out byte[] passwordHash);
+
+            var user = new User
             {
-                throw new InvalidCredentialException(
-                    "The email or password entered is incorrect. Please try again with a different one.");
-            }
+                UserId = Guid.NewGuid(),
+                Email = memberRegisterModel.Email,
+                Role = memberRegisterModel.Role,
+                PasswordSalt = passwordSalt,
+                PasswordHash = passwordHash
+            };
 
-            string token = CreateToken(_userDataModel);
-            var refreshToken = GenerateRefreshToken();
-            SetRefreshToken(refreshToken, response);
+            _userRepository.Add(user);
 
-            return token;
-        }
-
-        public string RefreshToken(HttpRequest request, HttpResponse response)
-        {
-            var refreshToken = request.Cookies["refreshToken"];
-
-            if (!_userDataModel.RefreshToken.Equals(refreshToken))
+            _publisherService.PublishMemberUserToBpmCore(new BpmCoreUserModel
             {
-                throw new InvalidCredentialException("Invalid Refresh Token.");
-            }
-            else if (_userDataModel.TokenExpires < DateTime.Now)
-            {
-                throw new InvalidCredentialException("Token expired.");
-            }
+                UserId = user.UserId,
+                FirstName = memberRegisterModel.FirstName,
+                LastName = memberRegisterModel.LastName,
+                Position = memberRegisterModel.Position,
+                Email = user.Email,
+                Role = user.Role,
+                TeamId = memberRegisterModel.TeamId,
+                SupervisorId = memberRegisterModel.SupervisorId
+            });
 
-            string token = CreateToken(_userDataModel);
-            var newRefreshToken = GenerateRefreshToken();
-            SetRefreshToken(newRefreshToken, response);
-
-            return token;
-        }
-
-        private bool IsValidCredentials(UserLoginModel userLoginModel)
-        {
-            if (userLoginModel.Email != _userDataModel.Email)
-            {
-                return false;
-            }
-
-            if (!VerifyPasswordHash(userLoginModel.Password, _userDataModel.PasswordSalt, _userDataModel.PasswordHash))
-            {
-                return false;
-            }
-
-            return true;
+            return user.UserId.ToString();
         }
 
         private void CreatePasswordHash(string password, out byte[] passwordSalt, out byte[] passwordHash)
@@ -94,25 +106,114 @@ namespace BPM_Auth.BLL.Services
             }
         }
 
+        public string Login(UserLoginModel userLoginModel, HttpResponse response)
+        {
+            var user = _userRepository.GetByEmail(userLoginModel.Email);
+
+            if (user == null)
+            {
+                throw new InvalidCredentialException(
+                   "The email or password entered is incorrect. Please try again with a different one.");
+            }
+
+            if (!IsValidCredentials(userLoginModel, user))
+            {
+                throw new InvalidCredentialException(
+                   "The email or password entered is incorrect. Please try again with a different one.");
+            }
+
+            string token = CreateToken(user);
+            var refreshToken = GenerateRefreshToken();
+            SetRefreshToken(user, refreshToken, response);
+
+            return token;
+        }
+
+        private bool IsValidCredentials(UserLoginModel userLoginModel, User user)
+        {
+            if (!VerifyPasswordHash(userLoginModel.Password, user.PasswordSalt, user.PasswordHash))
+            {
+                return false;
+            }
+
+            return true;
+        }
+
         private bool VerifyPasswordHash(string password, byte[] passwordSalt, byte[] passwordHash)
         {
             using (var hmac = new HMACSHA512(passwordSalt))
             {
-                var computedHash = hmac.ComputeHash(System.Text.Encoding.UTF8.GetBytes(password));
+                var computedHash = hmac.ComputeHash(Encoding.UTF8.GetBytes(password));
                 return computedHash.SequenceEqual(passwordHash);
             }
         }
 
-        private string CreateToken(UserDataModel user)
+        public string RefreshToken(HttpRequest request, HttpResponse response)
+        {
+            string token = GetTokenFromRequest(request);
+            var userId = GetUserIdFromToken(token);
+            var user = _userRepository.GetById(userId);
+
+            var refreshToken = request.Cookies["refreshToken"];
+            ValidateToken(user, refreshToken);
+
+            token = CreateToken(user);
+            var newRefreshToken = GenerateRefreshToken();
+            SetRefreshToken(user, newRefreshToken, response);
+
+            return token;
+        }
+
+        private string GetTokenFromRequest(HttpRequest request)
+        {
+            string authorizationHeader = request.Headers["Authorization"];
+            string? token = authorizationHeader?.Split(' ').Last();
+
+            if (token == null)
+            {
+                throw new ArgumentNullException("Token is missing");
+            }
+
+            return token;
+        }
+
+        private Guid GetUserIdFromToken(string token)
+        {
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var jwtToken = tokenHandler.ReadJwtToken(token);
+            var userId = jwtToken.Claims.FirstOrDefault(c => c.Type == "UserId")?.Value;
+
+            if (!Guid.TryParse(userId, out var parsedUserId))
+            {
+                throw new InvalidCredentialException("Invalid user Id in token.");
+            }
+
+            return parsedUserId;
+        }
+
+        private void ValidateToken(User user, string refreshToken)
+        {
+            if (!user.RefreshToken.Equals(refreshToken))
+            {
+                throw new InvalidCredentialException("Invalid Refresh Token.");
+            }
+            else if (user.TokenExpires < DateTime.Now)
+            {
+                throw new InvalidCredentialException("Token expired.");
+            }
+        }
+
+        private string CreateToken(User user)
         {
             List<Claim> claims = new List<Claim>
             {
+                new Claim("UserId", user.UserId.ToString()),
                 new Claim(ClaimTypes.Email, user.Email),
-                new Claim(ClaimTypes.Role, "Admin")
+                new Claim(ClaimTypes.Role, user.Role.ToString())
             };
 
             var key = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(_configuration.GetSection("AppSettings:Token").Value));
+                Encoding.UTF8.GetBytes(_configuration.GetSection("Jwt:Key").Value));
 
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha512Signature);
 
@@ -138,7 +239,7 @@ namespace BPM_Auth.BLL.Services
             return refreshToken;
         }
 
-        private void SetRefreshToken(RefreshToken newRefreshToken, HttpResponse response)
+        private void SetRefreshToken(User user, RefreshToken newRefreshToken, HttpResponse response)
         {
             var cookieOptions = new CookieOptions
             {
@@ -148,9 +249,11 @@ namespace BPM_Auth.BLL.Services
 
             response.Cookies.Append("refreshToken", newRefreshToken.Token, cookieOptions);
 
-            _userDataModel.RefreshToken = newRefreshToken.Token;
-            _userDataModel.TokenCreated = newRefreshToken.Created;
-            _userDataModel.TokenExpires = newRefreshToken.Expires;
+            user.RefreshToken = newRefreshToken.Token;
+            user.TokenCreated = newRefreshToken.Created;
+            user.TokenExpires = newRefreshToken.Expires;
+
+            _userRepository.SaveChanges();
         }
     }
 }

@@ -1,8 +1,8 @@
 ﻿namespace BPM_Auth.DAL.Enums
 {
-    public enum Rore
+    public enum Role
     {
         Admin = 1,
-        Employee
+        Member
     }
 }
