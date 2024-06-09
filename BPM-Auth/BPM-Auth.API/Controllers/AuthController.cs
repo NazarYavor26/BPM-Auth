@@ -1,6 +1,6 @@
-﻿using BPM_Auth.BLL.Models;
-using BPM_Auth.BLL.Models.User;
+﻿using BPM_Auth.BLL.Models.User;
 using BPM_Auth.BLL.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace BPM_Auth.API.Controllers;
@@ -20,23 +20,16 @@ public class AuthController : ControllerBase
     public ActionResult RegisterAdmin(AdminRegisterModel adminRegisterModel)
     {
         var registerResult = _authService.RegisterAdmin(adminRegisterModel);
-        return Ok(registerResult);
+        return Ok(new { registerResult });
     }
 
-    [HttpPost("register-team")]
-    public ActionResult RegisterTeam(TeamRegisterModel teamRegisterModel)
-    {
-        var registerResult = _authService.RegisterTeam(teamRegisterModel);
-        return Ok(registerResult);
-    }
 
     [HttpPost("register-member")]
-    public ActionResult RegisterMember(UserRegisterModel userRegisterModel)
+    public ActionResult RegisterMember(MemberRegisterModel userRegisterModel)
     {
         var registerResult = _authService.RegisterMember(userRegisterModel);
         return Ok(registerResult);
     }
-
 
     [HttpPost("login")]
     public ActionResult Login(UserLoginModel userLoginModel)
@@ -46,6 +39,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("refresh-token")]
+    [Authorize]
     public ActionResult RefreshToken()
     {
         var token = _authService.RefreshToken(Request, Response);

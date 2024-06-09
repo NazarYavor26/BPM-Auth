@@ -2,7 +2,7 @@
 
 namespace BPM_Auth.BLL.Models.User;
 
-public class UserRegisterModel
+public class MemberRegisterModel
 {
     public string FirstName { get; set; }
     public string LastName { get; set; }

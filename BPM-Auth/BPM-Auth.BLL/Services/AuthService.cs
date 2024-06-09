@@ -4,6 +4,8 @@ using BPM_Auth.DAL.DbContexts;
 using BPM_Auth.DAL.Entities;
 using BPM_Auth.DAL.Enums;
 using BPM_Auth.DAL.Repositories;
+using BPM_Auth.ServiceBus.Models;
+using BPM_Auth.ServiceBus.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
@@ -17,25 +19,20 @@ namespace BPM_Auth.BLL.Services
 {
     public class AuthService : IAuthService
     {
-        private UserDataModel _userDataModel;
         private readonly IConfiguration _configuration;
         private readonly IUserRepository _userRepository;
-        private readonly ITeamMembershipRepository _teamMembershipRepository;
-        private readonly ITeamRepository _teamRepository;
+        private readonly IPublisherService _publisherService;
         private readonly AppDbContext _db;
 
         public AuthService(
             IConfiguration configuration,
             IUserRepository userRepository,
-            ITeamMembershipRepository teamMembershipRepository, 
-            ITeamRepository teamRepository,
+            IPublisherService publisherService,
             AppDbContext db)
         {
-            _userDataModel = new UserDataModel();
             _configuration = configuration;
             _userRepository = userRepository;
-            _teamMembershipRepository = teamMembershipRepository;
-            _teamRepository = teamRepository;
+            _publisherService = publisherService;
             _db = db;
         }
 
@@ -46,9 +43,6 @@ namespace BPM_Auth.BLL.Services
             var user = new User
             {
                 UserId = Guid.NewGuid(),
-                FirstName = adminRegisterModel.FirstName,
-                LastName = adminRegisterModel.LastName,
-                Position = adminRegisterModel.Position,
                 Email = adminRegisterModel.Email,
                 Role = Role.Admin,
                 PasswordSalt = passwordSalt,
@@ -57,123 +51,50 @@ namespace BPM_Auth.BLL.Services
 
             _userRepository.Add(user);
 
+            _publisherService.PublishAdminUserToBpmCore(new BpmCoreUserModel
+            {
+                UserId = user.UserId,
+                FirstName = adminRegisterModel.FirstName,
+                LastName = adminRegisterModel.LastName,
+                Position = adminRegisterModel.Position,
+                Email = user.Email,
+                Role = user.Role
+            });
+
             return user.UserId.ToString();
         }
 
-        public string RegisterMember(UserRegisterModel userRegisterModel)
+        public string RegisterMember(MemberRegisterModel memberRegisterModel)
         {
-            CreatePasswordHash(userRegisterModel.Password, out byte[] passwordSalt, out byte[] passwordHash);
+            var supervisor = _userRepository.GetById(memberRegisterModel.SupervisorId)
+                ?? throw new Exception($"Supervisor with Id {memberRegisterModel.SupervisorId} not found");
+
+            CreatePasswordHash(memberRegisterModel.Password, out byte[] passwordSalt, out byte[] passwordHash);
 
             var user = new User
             {
                 UserId = Guid.NewGuid(),
-                FirstName = userRegisterModel.FirstName,
-                LastName = userRegisterModel.LastName,
-                Position = userRegisterModel.Position,
-                Email = userRegisterModel.Email,
-                Role = userRegisterModel.Role,
+                Email = memberRegisterModel.Email,
+                Role = memberRegisterModel.Role,
                 PasswordSalt = passwordSalt,
                 PasswordHash = passwordHash
             };
 
-            var team = _teamRepository.GetById(userRegisterModel.TeamId)
-                ?? throw new Exception($"Team with Id {userRegisterModel.TeamId} not found");
+            _userRepository.Add(user);
 
-            var supervisor = _userRepository.GetById(userRegisterModel.SupervisorId)
-                ?? throw new Exception($"Supervisor with Id {userRegisterModel.SupervisorId} not found");
-
-            var teamMembership = ConnectUserWithTeam(user, team);
-            teamMembership.SupervisorId = supervisor.UserId;
-            teamMembership.Supervisor = supervisor;
-
-            user.TeamMemberships.Add(teamMembership);
-            team.TeamMemberships.Add(teamMembership);
-            _teamMembershipRepository.Add(teamMembership);
+            _publisherService.PublishMemberUserToBpmCore(new BpmCoreUserModel
+            {
+                UserId = user.UserId,
+                FirstName = memberRegisterModel.FirstName,
+                LastName = memberRegisterModel.LastName,
+                Position = memberRegisterModel.Position,
+                Email = user.Email,
+                Role = user.Role,
+                TeamId = memberRegisterModel.TeamId,
+                SupervisorId = memberRegisterModel.SupervisorId
+            });
 
             return user.UserId.ToString();
-        }
-
-        public string RegisterTeam(TeamRegisterModel teamRegisterModel)
-        {
-            var team = new Team 
-            { 
-                TeamId = Guid.NewGuid(),
-                TeamName = teamRegisterModel.TeamName
-            };
-
-            var user = _userRepository.GetById(teamRegisterModel.AdminId) 
-                ?? throw new Exception($"User with Id {teamRegisterModel.AdminId} not found");
-
-            var teamMembership = ConnectUserWithTeam(user, team);
-            user.TeamMemberships.Add(teamMembership);
-            team.TeamMemberships.Add(teamMembership);
-            _teamMembershipRepository.Add(teamMembership);
-
-            return team.TeamId.ToString();
-        }
-
-        private TeamMembership ConnectUserWithTeam(User user, Team team, User? Supervisor = null)
-        {
-            return new TeamMembership
-            {
-                TeamMembershipId = Guid.NewGuid(),
-                UserId = user.UserId,
-                User = user,
-                TeamId = team.TeamId,
-                Team = team,
-                SupervisorId = Supervisor?.UserId,
-                Supervisor = Supervisor
-            };
-        }
-
-        public string Login(UserLoginModel userLoginModel, HttpResponse response)
-        {
-            if (!IsValidCredentials(userLoginModel))
-            {
-                throw new InvalidCredentialException(
-                    "The email or password entered is incorrect. Please try again with a different one.");
-            }
-
-            string token = CreateToken(_userDataModel);
-            var refreshToken = GenerateRefreshToken();
-            SetRefreshToken(refreshToken, response);
-
-            return token;
-        }
-
-        public string RefreshToken(HttpRequest request, HttpResponse response)
-        {
-            var refreshToken = request.Cookies["refreshToken"];
-
-            if (!_userDataModel.RefreshToken.Equals(refreshToken))
-            {
-                throw new InvalidCredentialException("Invalid Refresh Token.");
-            }
-            else if (_userDataModel.TokenExpires < DateTime.Now)
-            {
-                throw new InvalidCredentialException("Token expired.");
-            }
-
-            string token = CreateToken(_userDataModel);
-            var newRefreshToken = GenerateRefreshToken();
-            SetRefreshToken(newRefreshToken, response);
-
-            return token;
-        }
-
-        private bool IsValidCredentials(UserLoginModel userLoginModel)
-        {
-            if (userLoginModel.Email != _userDataModel.Email)
-            {
-                return false;
-            }
-
-            if (!VerifyPasswordHash(userLoginModel.Password, _userDataModel.PasswordSalt, _userDataModel.PasswordHash))
-            {
-                return false;
-            }
-
-            return true;
         }
 
         private void CreatePasswordHash(string password, out byte[] passwordSalt, out byte[] passwordHash)
@@ -185,25 +106,114 @@ namespace BPM_Auth.BLL.Services
             }
         }
 
+        public string Login(UserLoginModel userLoginModel, HttpResponse response)
+        {
+            var user = _userRepository.GetByEmail(userLoginModel.Email);
+
+            if (user == null)
+            {
+                throw new InvalidCredentialException(
+                   "The email or password entered is incorrect. Please try again with a different one.");
+            }
+
+            if (!IsValidCredentials(userLoginModel, user))
+            {
+                throw new InvalidCredentialException(
+                   "The email or password entered is incorrect. Please try again with a different one.");
+            }
+
+            string token = CreateToken(user);
+            var refreshToken = GenerateRefreshToken();
+            SetRefreshToken(user, refreshToken, response);
+
+            return token;
+        }
+
+        private bool IsValidCredentials(UserLoginModel userLoginModel, User user)
+        {
+            if (!VerifyPasswordHash(userLoginModel.Password, user.PasswordSalt, user.PasswordHash))
+            {
+                return false;
+            }
+
+            return true;
+        }
+
         private bool VerifyPasswordHash(string password, byte[] passwordSalt, byte[] passwordHash)
         {
             using (var hmac = new HMACSHA512(passwordSalt))
             {
-                var computedHash = hmac.ComputeHash(System.Text.Encoding.UTF8.GetBytes(password));
+                var computedHash = hmac.ComputeHash(Encoding.UTF8.GetBytes(password));
                 return computedHash.SequenceEqual(passwordHash);
             }
         }
 
-        private string CreateToken(UserDataModel user)
+        public string RefreshToken(HttpRequest request, HttpResponse response)
+        {
+            string token = GetTokenFromRequest(request);
+            var userId = GetUserIdFromToken(token);
+            var user = _userRepository.GetById(userId);
+
+            var refreshToken = request.Cookies["refreshToken"];
+            ValidateToken(user, refreshToken);
+
+            token = CreateToken(user);
+            var newRefreshToken = GenerateRefreshToken();
+            SetRefreshToken(user, newRefreshToken, response);
+
+            return token;
+        }
+
+        private string GetTokenFromRequest(HttpRequest request)
+        {
+            string authorizationHeader = request.Headers["Authorization"];
+            string? token = authorizationHeader?.Split(' ').Last();
+
+            if (token == null)
+            {
+                throw new ArgumentNullException("Token is missing");
+            }
+
+            return token;
+        }
+
+        private Guid GetUserIdFromToken(string token)
+        {
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var jwtToken = tokenHandler.ReadJwtToken(token);
+            var userId = jwtToken.Claims.FirstOrDefault(c => c.Type == "UserId")?.Value;
+
+            if (!Guid.TryParse(userId, out var parsedUserId))
+            {
+                throw new InvalidCredentialException("Invalid user Id in token.");
+            }
+
+            return parsedUserId;
+        }
+
+        private void ValidateToken(User user, string refreshToken)
+        {
+            if (!user.RefreshToken.Equals(refreshToken))
+            {
+                throw new InvalidCredentialException("Invalid Refresh Token.");
+            }
+            else if (user.TokenExpires < DateTime.Now)
+            {
+                throw new InvalidCredentialException("Token expired.");
+            }
+        }
+
+        private string CreateToken(User user)
         {
             List<Claim> claims = new List<Claim>
             {
+                new Claim("UserId", user.UserId.ToString()),
                 new Claim(ClaimTypes.Email, user.Email),
-                new Claim(ClaimTypes.Role, "Admin")
+                new Claim(ClaimTypes.Role, user.Role.ToString())
             };
 
             var key = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(_configuration.GetSection("AppSettings:Token").Value));
+                Encoding.UTF8.GetBytes(_configuration.GetSection("Jwt:Key").Value));
 
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha512Signature);
 
@@ -229,7 +239,7 @@ namespace BPM_Auth.BLL.Services
             return refreshToken;
         }
 
-        private void SetRefreshToken(RefreshToken newRefreshToken, HttpResponse response)
+        private void SetRefreshToken(User user, RefreshToken newRefreshToken, HttpResponse response)
         {
             var cookieOptions = new CookieOptions
             {
@@ -239,9 +249,11 @@ namespace BPM_Auth.BLL.Services
 
             response.Cookies.Append("refreshToken", newRefreshToken.Token, cookieOptions);
 
-            _userDataModel.RefreshToken = newRefreshToken.Token;
-            _userDataModel.TokenCreated = newRefreshToken.Created;
-            _userDataModel.TokenExpires = newRefreshToken.Expires;
+            user.RefreshToken = newRefreshToken.Token;
+            user.TokenCreated = newRefreshToken.Created;
+            user.TokenExpires = newRefreshToken.Expires;
+
+            _userRepository.SaveChanges();
         }
     }
 }

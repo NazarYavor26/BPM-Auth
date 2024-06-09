@@ -8,9 +8,7 @@ namespace BPM_Auth.BLL.Services
     {
         string RegisterAdmin(AdminRegisterModel adminRegisterModel);
 
-        string RegisterMember(UserRegisterModel userRegisterModel);
-
-        string RegisterTeam(TeamRegisterModel teamRegisterModel);
+       string RegisterMember(MemberRegisterModel userRegisterModel);
 
         string Login(UserLoginModel userLoginModel, HttpResponse response);
 

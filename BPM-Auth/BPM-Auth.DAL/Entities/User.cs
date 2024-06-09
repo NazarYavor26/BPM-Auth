@@ -5,9 +5,6 @@ namespace BPM_Auth.DAL.Entities
     public class User
     {
         public Guid UserId { get; set; }
-        public string FirstName { get; set; }
-        public string LastName { get; set; }
-        public string Position { get; set; }
         public string Email { get; set; }
         public Role Role { get; set; }
 
@@ -17,7 +14,5 @@ namespace BPM_Auth.DAL.Entities
         public string RefreshToken { get; set; } = string.Empty;
         public DateTime TokenCreated { get; set; }
         public DateTime TokenExpires { get; set; }
-
-        public List<TeamMembership> TeamMemberships { get; set; } = new();
     }
 }
